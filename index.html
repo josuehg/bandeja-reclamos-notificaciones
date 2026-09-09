@@ -788,13 +788,15 @@
   function loadDetailFiles(r, readOnly){
     var box=function(){ return $("#detail-thumbs"); };
     if(!r.file_count){ if(box()) box().innerHTML='<div class="thumb doc">sin adjuntos</div>'; return; }
-    if(readOnly){ if(box()) box().innerHTML='<div class="thumb doc">'+r.file_count+' foto(s)</div>'; return; }
-    sb.from("record_files").select("path,nombre").eq("record_id", r.id).order("created_at").then(function(res){
+    var filesP = (readOnly && role==="sucursal")
+      ? sb.rpc("fotos_registro", { p_pin: myPin, p_record_id: r.id }).then(function(res){ return res.error ? { error:res.error } : { data:res.data||[] }; })
+      : sb.from("record_files").select("path,nombre").eq("record_id", r.id).order("created_at");
+    filesP.then(function(res){
       if(!box()) return;
       if(res.error || !res.data || !res.data.length){ box().innerHTML='<div class="thumb doc">'+(res.error?"no se pudo cargar":"sin adjuntos")+'</div>'; return; }
-      Promise.all(res.data.map(function(f){ return sb.storage.from("fotos").createSignedUrl(f.path, 3600).then(function(u){ return u.data?u.data.signedUrl:""; }); })).then(function(urls){
+      Promise.all(res.data.map(function(f){ return sb.storage.from("fotos").createSignedUrl(f.path, 3600).then(function(u){ return u.data?u.data.signedUrl:""; }).catch(function(){ return ""; }); })).then(function(urls){
         detailFiles=urls.filter(Boolean);
-        box().innerHTML=detailFiles.map(function(u,i){ return '<div class="thumb"><img src="'+u+'" alt="adjunto" data-i="'+i+'" loading="lazy"></div>'; }).join("") || '<div class="thumb doc">sin vista previa</div>';
+        box().innerHTML=detailFiles.map(function(u,i){ return '<div class="thumb"><img src="'+u+'" alt="adjunto" data-i="'+i+'" loading="lazy"></div>'; }).join("") || '<div class="thumb doc">no se pudo abrir la vista previa</div>';
         Array.prototype.forEach.call(box().querySelectorAll("img"), function(im){ im.style.cursor="zoom-in"; im.addEventListener("click", function(){ openLightbox(detailFiles[+im.getAttribute("data-i")]); }); });
       });
     });
