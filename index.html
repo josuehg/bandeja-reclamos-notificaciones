@@ -1,0 +1,1035 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Reclamos y Notificaciones</title>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bitter:wght@500;600;700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+  :root{
+    --ground:#f5f7f3; --surface:#ffffff; --surface-2:#eef1ec;
+    --ink:#1a231e; --ink-soft:#5b675f; --line:#d8ded6; --line-strong:#c4ccc3;
+    --accent:#0e6b4a; --accent-ink:#0a5138; --accent-soft:#e0efe7;
+    --info:#1f5f86; --info-soft:#e0ecf3; --info-ink:#184b6a;
+    --ok:#2f7d4f; --ok-soft:#e3efe4; --ok-ink:#1f5636;
+    --warn:#a9680f; --warn-soft:#f6ead6; --warn-ink:#7a4a09;
+    --crit:#b23327; --crit-soft:#f6e1de; --crit-ink:#822014;
+    --shadow:0 1px 2px rgba(20,30,24,.06), 0 8px 24px rgba(20,30,24,.08);
+    --radius:10px;
+    --font-display:"Bitter",Georgia,"Times New Roman",serif;
+    --font-body:"IBM Plex Sans",system-ui,-apple-system,"Segoe UI",sans-serif;
+    --font-mono:"IBM Plex Mono",ui-monospace,"SFMono-Regular",Menlo,monospace;
+  }
+  @media (prefers-color-scheme:dark){
+    :root:not([data-theme="light"]){
+      --ground:#10160f; --surface:#171e18; --surface-2:#1e2620;
+      --ink:#e7ede8; --ink-soft:#9aa89f; --line:#2b342d; --line-strong:#39443a;
+      --accent:#49b285; --accent-ink:#7fcaa8; --accent-soft:#16281f;
+      --info:#5aa6cf; --info-soft:#152833; --info-ink:#9fcce4;
+      --ok:#5cae76; --ok-soft:#17251a; --ok-ink:#9ed3ac;
+      --warn:#d69a4a; --warn-soft:#2a2113; --warn-ink:#e8bd82;
+      --crit:#dc6b5d; --crit-soft:#2c1a17; --crit-ink:#f0a99e;
+      --shadow:0 1px 2px rgba(0,0,0,.4), 0 10px 30px rgba(0,0,0,.5);
+    }
+  }
+  :root[data-theme="dark"]{
+    --ground:#10160f; --surface:#171e18; --surface-2:#1e2620;
+    --ink:#e7ede8; --ink-soft:#9aa89f; --line:#2b342d; --line-strong:#39443a;
+    --accent:#49b285; --accent-ink:#7fcaa8; --accent-soft:#16281f;
+    --info:#5aa6cf; --info-soft:#152833; --info-ink:#9fcce4;
+    --ok:#5cae76; --ok-soft:#17251a; --ok-ink:#9ed3ac;
+    --warn:#d69a4a; --warn-soft:#2a2113; --warn-ink:#e8bd82;
+    --crit:#dc6b5d; --crit-soft:#2c1a17; --crit-ink:#f0a99e;
+    --shadow:0 1px 2px rgba(0,0,0,.4), 0 10px 30px rgba(0,0,0,.5);
+  }
+
+  *{box-sizing:border-box}
+  html,body{margin:0}
+  body{background:var(--ground);color:var(--ink);font-family:var(--font-body);line-height:1.5;-webkit-text-size-adjust:100%}
+  img{max-width:100%}
+  h1,h2,h3{font-family:var(--font-display);margin:0;text-wrap:balance;font-weight:600}
+  button{font-family:inherit}
+  a{color:var(--accent-ink)}
+  .wrap{max-width:1080px;margin:0 auto;padding:0 20px 96px}
+  [hidden]{display:none!important}
+
+  .btn{border:1px solid var(--line-strong);background:var(--surface);color:var(--ink);border-radius:var(--radius);padding:9px 14px;font-size:13.5px;font-weight:500;cursor:pointer;display:inline-flex;align-items:center;gap:7px;transition:background .12s,border-color .12s}
+  .btn:hover{background:var(--surface-2)}
+  .btn:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+  .btn-primary{background:var(--accent);border-color:var(--accent);color:#fff}
+  .btn-primary:hover{background:var(--accent-ink)}
+  :root[data-theme="dark"] .btn-primary{color:#0b1410}
+  @media (prefers-color-scheme:dark){:root:not([data-theme="light"]) .btn-primary{color:#0b1410}}
+  .btn-ghost{border-color:transparent;background:transparent}
+  .btn-ghost:hover{background:var(--surface-2)}
+  .btn-danger{color:var(--crit-ink);border-color:var(--crit)}
+  .btn-danger:hover{background:var(--crit-soft)}
+  .btn[disabled]{opacity:.5;cursor:not-allowed}
+  .btn-lg{padding:13px 18px;font-size:15px}
+  .btn-block{width:100%;justify-content:center}
+
+  .gate{min-height:82vh;display:flex;align-items:center;justify-content:center;padding:32px 20px}
+  .gate-card{width:100%;max-width:440px;background:var(--surface);border:1px solid var(--line);border-radius:16px;box-shadow:var(--shadow);padding:26px}
+  .gate-card .kicker{font-family:var(--font-mono);font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--accent-ink)}
+  .gate-card h1{font-size:22px;margin:6px 0 4px;line-height:1.15}
+  .gate-card .sub{color:var(--ink-soft);font-size:13.5px;margin:0 0 20px}
+  .gate-choices{display:flex;flex-direction:column;gap:10px}
+  .choice{display:flex;gap:12px;align-items:flex-start;text-align:left;border:1px solid var(--line-strong);background:var(--surface);border-radius:12px;padding:14px;cursor:pointer;transition:border-color .12s,background .12s}
+  .choice:hover{border-color:var(--accent);background:var(--surface-2)}
+  .choice .ico{font-size:20px;line-height:1.2}
+  .choice b{display:block;font-size:14.5px;color:var(--ink);margin-bottom:2px}
+  .choice>span{display:block}
+  .choice span span{font-size:12.5px;color:var(--ink-soft);display:block}
+  .gate-step{margin-top:6px}
+  .gate-card .gate-step label{display:block;font-size:12.5px;font-weight:600;margin-bottom:6px}
+  .gate-card .gate-step input{width:100%;font-family:var(--font-mono);font-size:16px;letter-spacing:.06em;text-transform:uppercase;padding:11px 12px;border:1px solid var(--line-strong);border-radius:9px;background:var(--surface);color:var(--ink)}
+  .gate-card .gate-step input#gg-email{text-transform:none;letter-spacing:normal;font-family:var(--font-body);font-size:15px}
+  .gate-card .gate-step input:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
+  .gate-step .err{color:var(--crit-ink);font-size:12px;margin-top:7px}
+  .gate-step .ok{color:var(--ok-ink);font-size:12.5px;margin-top:8px}
+  .gate-back{background:none;border:none;color:var(--accent-ink);font-size:13.5px;cursor:pointer;padding:6px 2px;margin:0 0 10px -2px}
+  .gate-back:hover{text-decoration:underline}
+  .gate-foot{margin-top:16px;font-size:11.5px;color:var(--ink-soft);line-height:1.45}
+
+  .topbar{position:sticky;top:0;z-index:20;background:var(--ground);border-bottom:1px solid var(--line);padding:16px 0 13px;margin-bottom:20px}
+  .topbar .wrap{padding-bottom:0;display:flex;align-items:flex-start;gap:16px;flex-wrap:wrap}
+  .brand{flex:1 1 240px;min-width:0}
+  .brand .kicker{font-family:var(--font-mono);font-size:11px;letter-spacing:.13em;text-transform:uppercase;color:var(--accent-ink)}
+  .brand h1{font-size:21px;line-height:1.15;margin-top:3px}
+  .brand p{margin:4px 0 0;color:var(--ink-soft);font-size:13px}
+  .top-actions{display:flex;gap:9px;flex-wrap:wrap;align-items:center}
+  .who{font-size:12px;color:var(--ink-soft);font-family:var(--font-mono)}
+  .who b{color:var(--ink)}
+
+  .suc-hero{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:20px;margin-bottom:20px;display:flex;flex-wrap:wrap;gap:16px;align-items:center;justify-content:space-between}
+  .suc-hero .h-txt h2{font-size:18px}
+  .suc-hero .h-txt p{margin:3px 0 0;color:var(--ink-soft);font-size:13px}
+  .mini-head{font-family:var(--font-mono);font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:var(--ink-soft);margin:22px 0 10px}
+
+  .tiles{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:20px}
+  .tile{text-align:left;border:1px solid var(--line);background:var(--surface);border-radius:var(--radius);padding:13px 14px;cursor:pointer;transition:border-color .12s,transform .06s}
+  .tile:hover{border-color:var(--line-strong)}
+  .tile:active{transform:translateY(1px)}
+  .tile[aria-pressed="true"]{border-color:var(--accent);box-shadow:inset 0 0 0 1px var(--accent)}
+  .tile .n{font-family:var(--font-mono);font-size:25px;font-weight:500;line-height:1;font-variant-numeric:tabular-nums}
+  .tile .lbl{display:block;margin-top:6px;font-size:12px;color:var(--ink-soft)}
+  .tile.t-info .n{color:var(--info-ink)} .tile.t-crit .n{color:var(--crit-ink)}
+  .tile.t-warn .n{color:var(--warn-ink)} .tile.t-ok .n{color:var(--ok-ink)}
+
+  .toolbar{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-bottom:16px}
+  .toolbar select,.toolbar input{font-family:inherit;font-size:13px;padding:8px 10px;border:1px solid var(--line-strong);border-radius:8px;background:var(--surface);color:var(--ink);min-height:37px}
+  .toolbar input{flex:1 1 180px;min-width:140px}
+  .toolbar select:focus-visible,.toolbar input:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
+  .count-note{font-size:12.5px;color:var(--ink-soft);font-family:var(--font-mono)}
+
+  .banner{display:flex;gap:10px;align-items:flex-start;background:var(--accent-soft);border:1px solid var(--line);border-left:3px solid var(--accent);border-radius:8px;padding:11px 13px;margin-bottom:18px;font-size:13px}
+  .banner.info{background:var(--info-soft);border-left-color:var(--info)}
+  .banner.crit{background:var(--crit-soft);border-left-color:var(--crit)}
+  .banner b{font-weight:600}
+
+  .list{display:flex;flex-direction:column;gap:10px}
+  .row{display:grid;grid-template-columns:minmax(0,2.1fr) minmax(0,1fr) 150px 130px;gap:16px;align-items:center;width:100%;text-align:left;background:var(--surface);border:1px solid var(--line);border-left:4px solid var(--stripe,var(--line-strong));border-radius:0 var(--radius) var(--radius) 0;padding:13px 15px;cursor:pointer;color:inherit;font:inherit;transition:border-color .12s}
+  .row:hover{border-color:var(--line-strong)}
+  .row:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+  .r-main{min-width:0}
+  .r-top{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+  .r-desc{margin:4px 0 0;font-size:12.5px;color:var(--ink-soft);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .r-meta{font-size:12.5px;color:var(--ink-soft);min-width:0}
+  .r-meta .mono{font-family:var(--font-mono);font-size:11.5px;color:var(--ink);display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .r-when{font-family:var(--font-mono);font-size:12px;color:var(--ink-soft);font-variant-numeric:tabular-nums}
+  .r-plazo{font-family:var(--font-mono);font-size:12.5px;font-variant-numeric:tabular-nums;line-height:1.25}
+  .r-plazo b{display:block;font-weight:600;font-size:12.5px}
+  .r-plazo span{color:var(--ink-soft);font-size:11px}
+  .p-crit b{color:var(--crit-ink)} .p-warn b{color:var(--warn-ink)} .p-ok b{color:var(--ok-ink)} .p-done b{color:var(--ink-soft)} .p-info b{color:var(--info-ink)}
+
+  .badge{display:inline-flex;align-items:center;gap:5px;font-size:11px;font-weight:600;padding:3px 8px;border-radius:999px;background:var(--surface-2);color:var(--ink);border:1px solid var(--line)}
+  .pill{display:inline-flex;align-items:center;gap:5px;font-size:11px;font-weight:600;padding:3px 9px;border-radius:999px;white-space:nowrap}
+  .pill::before{content:"";width:6px;height:6px;border-radius:50%;background:currentColor;flex:none}
+  .pill-nuevo{background:var(--info-soft);color:var(--info-ink)}
+  .pill-pendiente{background:var(--surface-2);color:var(--ink-soft)}
+  .pill-en_proceso{background:var(--warn-soft);color:var(--warn-ink)}
+  .pill-resuelto{background:var(--ok-soft);color:var(--ok-ink)}
+  .clip{font-family:var(--font-mono);font-size:11px;color:var(--ink-soft)}
+  .empty{text-align:center;padding:48px 20px;color:var(--ink-soft)}
+  .empty h3{font-size:16px;color:var(--ink);margin-bottom:6px}
+
+  .backdrop{position:fixed;inset:0;background:rgba(12,18,14,.44);opacity:0;pointer-events:none;transition:opacity .18s;z-index:40}
+  .backdrop.open{opacity:1;pointer-events:auto}
+  .drawer{position:fixed;top:0;right:0;height:100%;width:min(540px,100%);background:var(--surface);border-left:1px solid var(--line);box-shadow:var(--shadow);transform:translateX(100%);transition:transform .22s ease;z-index:50;display:flex;flex-direction:column}
+  .drawer.open{transform:none}
+  .drawer-head{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:15px 18px;border-bottom:1px solid var(--line);flex:none}
+  .drawer-head h2{font-size:17px}
+  .drawer-body{overflow-y:auto;padding:18px;flex:1}
+  .drawer-foot{flex:none;border-top:1px solid var(--line);padding:13px 18px;display:flex;gap:10px;justify-content:flex-end;flex-wrap:wrap}
+  .icon-btn{border:none;background:transparent;color:var(--ink-soft);font-size:19px;line-height:1;cursor:pointer;padding:6px;border-radius:6px}
+  .icon-btn:hover{background:var(--surface-2);color:var(--ink)}
+
+  .field{margin-bottom:14px}
+  .field label{display:block;font-size:12.5px;font-weight:600;margin-bottom:5px}
+  .field .hint{font-size:11.5px;color:var(--ink-soft);margin-top:4px}
+  .field input,.field select,.field textarea{width:100%;font-family:inherit;font-size:13.5px;padding:9px 11px;border:1px solid var(--line-strong);border-radius:8px;background:var(--surface);color:var(--ink)}
+  .field textarea{min-height:74px;resize:vertical}
+  .field input:focus-visible,.field select:focus-visible,.field textarea:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
+  .field.invalid input,.field.invalid select,.field.invalid textarea{border-color:var(--crit)}
+  .err{color:var(--crit-ink);font-size:11.5px;margin-top:4px}
+  .grid2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+  .relink{background:none;border:none;color:var(--accent-ink);font-size:11.5px;cursor:pointer;padding:0;text-decoration:underline}
+  .aviso{background:var(--info-soft);border:1px solid var(--line);border-left:3px solid var(--info);border-radius:8px;padding:10px 12px;font-size:12.5px;line-height:1.45;margin-bottom:10px}
+  .aviso b{font-weight:600}
+
+  .drop{border:1.5px dashed var(--line-strong);border-radius:9px;padding:18px;text-align:center;font-size:12.5px;color:var(--ink-soft);cursor:pointer;background:var(--surface-2)}
+  .drop:hover{border-color:var(--accent)}
+  .thumbs{display:grid;grid-template-columns:repeat(auto-fill,minmax(84px,1fr));gap:8px;margin-top:10px}
+  .thumb{position:relative;aspect-ratio:1;border-radius:7px;overflow:hidden;border:1px solid var(--line)}
+  .thumb img{width:100%;height:100%;object-fit:cover;display:block}
+  .thumb .x{position:absolute;top:3px;right:3px;background:rgba(12,18,14,.72);color:#fff;border:none;width:20px;height:20px;border-radius:50%;font-size:12px;cursor:pointer;line-height:1}
+  .thumb.doc{display:flex;align-items:center;justify-content:center;flex-direction:column;font-family:var(--font-mono);font-size:10px;color:var(--ink-soft);padding:6px;text-align:center;background:var(--surface-2)}
+
+  .dl{display:grid;grid-template-columns:120px 1fr;gap:7px 12px;font-size:13px;margin:10px 0 16px}
+  .dl dt{color:var(--ink-soft);font-size:12px}
+  .dl dd{margin:0}
+  .dl .mono{font-family:var(--font-mono);font-size:12px}
+  .section-t{font-family:var(--font-mono);font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:var(--ink-soft);margin:18px 0 9px;padding-bottom:5px;border-bottom:1px solid var(--line)}
+  .plazo-box{border:1px solid var(--line);border-left:4px solid var(--stripe,var(--line-strong));border-radius:0 8px 8px 0;padding:11px 13px;font-family:var(--font-mono);margin-bottom:6px}
+  .plazo-box b{font-size:15px;display:block}
+  .plazo-box.p-crit b{color:var(--crit-ink)} .plazo-box.p-warn b{color:var(--warn-ink)} .plazo-box.p-ok b{color:var(--ok-ink)} .plazo-box.p-done b{color:var(--ink-soft)} .plazo-box.p-info b{color:var(--info-ink)}
+  .plazo-box span{font-size:12px;color:var(--ink-soft)}
+  .suc-admin-row{display:flex;gap:8px;align-items:center;margin-bottom:8px}
+  .suc-admin-row input{flex:1}
+  .suc-admin-row .code{max-width:120px;font-family:var(--font-mono)}
+
+  .lightbox{position:fixed;inset:0;background:rgba(8,12,9,.9);display:flex;align-items:center;justify-content:center;padding:24px;z-index:60;opacity:0;pointer-events:none;transition:opacity .15s}
+  .lightbox.open{opacity:1;pointer-events:auto}
+  .lightbox img{max-width:100%;max-height:100%;border-radius:8px}
+  .lightbox .x{position:absolute;top:16px;right:18px;color:#fff;background:none;border:none;font-size:30px;cursor:pointer}
+  .toast{position:fixed;left:50%;bottom:22px;transform:translateX(-50%) translateY(20px);background:var(--ink);color:var(--ground);font-size:13px;padding:10px 16px;border-radius:8px;opacity:0;pointer-events:none;transition:opacity .18s,transform .18s;z-index:70;max-width:90vw;text-align:center}
+  .toast.show{opacity:1;transform:translateX(-50%)}
+  .modal-wrap{position:fixed;inset:0;background:rgba(12,18,14,.5);display:flex;align-items:center;justify-content:center;padding:24px;z-index:80}
+  .modal{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:20px;max-width:360px;width:100%;box-shadow:var(--shadow)}
+  .modal p{margin:0 0 16px;font-size:14px}
+  .modal-actions{display:flex;gap:10px;justify-content:flex-end}
+  .spin{display:inline-block;width:13px;height:13px;border:2px solid currentColor;border-right-color:transparent;border-radius:50%;animation:sp .7s linear infinite;vertical-align:-2px}
+  @keyframes sp{to{transform:rotate(360deg)}}
+  .full-load{min-height:70vh;display:flex;align-items:center;justify-content:center;color:var(--ink-soft);font-size:13px}
+
+  @media (max-width:760px){
+    .tiles{grid-template-columns:1fr 1fr;gap:10px}
+    .row{grid-template-columns:1fr;gap:8px;border-left-width:5px}
+    .drawer{width:100%;border-left:none}
+    .grid2{grid-template-columns:1fr}
+    .dl{grid-template-columns:104px 1fr}
+  }
+  @media (prefers-reduced-motion:reduce){ .drawer,.backdrop,.lightbox,.toast{transition:none} }
+</style>
+</head>
+<body>
+
+<div id="boot" class="full-load"><span class="spin"></span>&nbsp; Cargando…</div>
+
+<!-- ============ GATE ============ -->
+<section class="gate" id="gate" hidden>
+  <div class="gate-card">
+    <span class="kicker">Retail farmacéutico</span>
+    <h1>Reclamos y Notificaciones</h1>
+    <p class="sub">Registro de reclamos del libro y documentos que exigen respuesta pronta, por sucursal.</p>
+
+    <div class="gate-choices" id="gate-choices">
+      <button class="choice" data-role="sucursal">
+        <span class="ico" aria-hidden="true">🏪</span>
+        <span><b>Entrar como sucursal</b><span>Subo fotos del reclamo o del documento recibido.</span></span>
+      </button>
+      <button class="choice" data-role="gestor">
+        <span class="ico" aria-hidden="true">🗂️</span>
+        <span><b>Entrar como gestor</b><span>Clasifico, controlo los plazos y respondo. Requiere correo autorizado.</span></span>
+      </button>
+    </div>
+
+    <div class="gate-step" id="gate-suc" hidden>
+      <button class="gate-back" data-back>← Volver</button>
+      <div class="field" style="margin-bottom:0">
+        <label for="gate-suc-pin">PIN de tu sucursal</label>
+        <input id="gate-suc-pin" autocomplete="off" maxlength="12" placeholder="••••">
+        <div class="err" id="gate-suc-err" hidden></div>
+        <button class="btn btn-primary btn-block" id="gate-suc-go" style="margin-top:14px">Entrar</button>
+      </div>
+      <p class="gate-foot">Tu sucursal queda guardada en este equipo. El PIN es un filtro de acceso, no una contraseña segura.</p>
+    </div>
+
+    <div class="gate-step" id="gate-gestor" hidden>
+      <button class="gate-back" data-back>← Volver</button>
+      <div class="field" style="margin-bottom:0">
+        <label for="gg-email">Tu correo (gestor autorizado)</label>
+        <input id="gg-email" type="email" autocomplete="email" placeholder="nombre@correo.com">
+        <div class="err" id="gg-err" hidden></div>
+        <div class="ok" id="gg-ok" hidden></div>
+        <button class="btn btn-primary btn-block" id="gg-go" style="margin-top:14px">Enviarme el enlace de acceso</button>
+      </div>
+      <p class="gate-foot">Te llega un enlace por correo. Ábrelo en este mismo dispositivo y quedas dentro. Solo funcionan los correos que están en la lista de gestores.</p>
+    </div>
+  </div>
+</section>
+
+<!-- ============ SUCURSAL ============ -->
+<div id="view-suc" hidden>
+  <header class="topbar"><div class="wrap">
+    <div class="brand"><span class="kicker">Sucursal</span><h1 id="suc-name">—</h1></div>
+    <div class="top-actions">
+      <span class="who" id="suc-who"></span>
+      <button class="btn" id="suc-exit"><span aria-hidden="true">←</span> Cambiar de sucursal</button>
+    </div>
+  </div></header>
+  <main class="wrap">
+    <div class="suc-hero">
+      <div class="h-txt"><h2>Registrar un documento</h2><p>Reclamo del libro, notificación municipal, acta de inspección, carta u oficio.</p></div>
+      <button class="btn btn-primary btn-lg" id="suc-new"><span aria-hidden="true">＋</span> Nuevo registro</button>
+    </div>
+    <div class="mini-head">Enviados por esta sucursal</div>
+    <div class="list" id="suc-list"></div>
+  </main>
+</div>
+
+<!-- ============ GESTOR ============ -->
+<div id="view-ges" hidden>
+  <header class="topbar"><div class="wrap">
+    <div class="brand"><span class="kicker">Gestor · Bandeja de recepción</span><h1>Reclamos y Notificaciones</h1><p>Clasifica cada documento, fija el plazo y controla la respuesta.</p></div>
+    <div class="top-actions">
+      <span class="who" id="ges-who"></span>
+      <button class="btn btn-ghost" id="btn-gestores">Gestores</button>
+      <button class="btn btn-ghost" id="btn-sucursales">Sucursales</button>
+      <button class="btn" id="btn-export"><span aria-hidden="true">↧</span> CSV</button>
+      <button class="btn btn-primary" id="ges-new"><span aria-hidden="true">＋</span> Registrar</button>
+      <button class="btn btn-ghost" id="ges-exit">Salir</button>
+    </div>
+  </div></header>
+  <main class="wrap">
+    <div class="tiles" id="tiles">
+      <button class="tile t-info" data-quick="nuevos" aria-pressed="false"><span class="n" id="n-nuevos">0</span><span class="lbl">Sin clasificar</span></button>
+      <button class="tile t-crit" data-quick="vencidos" aria-pressed="false"><span class="n" id="n-vencidos">0</span><span class="lbl">Vencidos sin responder</span></button>
+      <button class="tile t-warn" data-quick="urgentes" aria-pressed="false"><span class="n" id="n-urgentes">0</span><span class="lbl">Vencen en ≤ 5 días hábiles</span></button>
+      <button class="tile t-ok" data-quick="resueltos" aria-pressed="false"><span class="n" id="n-resueltos">0</span><span class="lbl">Resueltos (últimos 30 d)</span></button>
+    </div>
+    <div class="toolbar">
+      <select id="f-sucursal"><option value="">Todas las sucursales</option></select>
+      <select id="f-institucion"><option value="">Todas las instituciones</option></select>
+      <select id="f-estado">
+        <option value="">Todos los estados</option>
+        <option value="nuevo">Sin clasificar</option>
+        <option value="pendiente">Pendiente</option>
+        <option value="en_proceso">En proceso</option>
+        <option value="resuelto">Resuelto</option>
+      </select>
+      <input id="f-q" type="search" placeholder="Buscar por expediente, comentario o persona" autocomplete="off">
+      <span class="count-note" id="count-note"></span>
+    </div>
+    <div class="list" id="ges-list"></div>
+  </main>
+</div>
+
+<div class="backdrop" id="backdrop"></div>
+<aside class="drawer" id="drawer" role="dialog" aria-modal="true" aria-labelledby="drawer-title">
+  <div class="drawer-head"><h2 id="drawer-title">Registrar documento</h2><button class="icon-btn" id="drawer-close" aria-label="Cerrar">✕</button></div>
+  <div class="drawer-body" id="drawer-body"></div>
+  <div class="drawer-foot" id="drawer-foot"></div>
+</aside>
+<div class="lightbox" id="lightbox"><button class="x" aria-label="Cerrar">✕</button><img alt="Documento adjunto" id="lightbox-img"></div>
+<div class="modal-wrap" id="confirm-wrap" hidden><div class="modal" role="dialog" aria-modal="true"><p id="confirm-msg"></p><div class="modal-actions"><button class="btn btn-ghost" id="confirm-no">Cancelar</button><button class="btn btn-primary" id="confirm-yes">Aceptar</button></div></div></div>
+<div class="toast" id="toast" role="status"></div>
+<datalist id="dl-personas"></datalist>
+
+<script>
+(function(){
+  "use strict";
+
+  /* ================================================================
+     CONFIGURACIÓN — pega aquí los datos de tu proyecto Supabase
+     (Supabase → Settings → API)
+  ================================================================ */
+  var SUPABASE_URL      = "https://TU-PROYECTO.supabase.co";
+  var SUPABASE_ANON_KEY = "PEGA-AQUI-TU-ANON-PUBLIC-KEY";
+  /* ================================================================ */
+
+  var sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+  /* ---------- Catálogos ---------- */
+  var INSTITUCIONES = [
+    "Cliente / consumidor (Libro de Reclamaciones)","INDECOPI",
+    "Municipalidad (licencia, anuncios, salubridad)","DIGEMID",
+    "Autoridad sanitaria regional (DIRIS / DIRESA / GERESA)",
+    "INDECI / Defensa Civil (ITSE)","Cuerpo General de Bomberos",
+    "SUNAFIL (inspección laboral)","SUNAT","OEFA / autoridad ambiental",
+    "MINSA","Poder Judicial / Ministerio Público / PNP","Otra"
+  ];
+  var TIPOS = {
+    reclamo_libro:{ short:"Reclamo / queja", label:"Reclamo o queja del Libro de Reclamaciones", plazo:15, hint:"INDECOPI: hasta 15 días hábiles para responder al consumidor." },
+    notificacion:{ short:"Notificación", label:"Notificación o requerimiento", plazo:5, hint:"Revisa el plazo exacto que indica el documento." },
+    acta_inspeccion:{ short:"Acta de inspección", label:"Acta de inspección", plazo:5, hint:"El plazo para descargos figura en el acta (normalmente 3 a 7 días hábiles)." },
+    resolucion:{ short:"Resolución / multa", label:"Resolución o multa", plazo:15, hint:"Plazo típico para impugnar: 15 días hábiles. Confírmalo en la resolución." },
+    carta_oficio:{ short:"Carta / oficio", label:"Carta u oficio", plazo:5, hint:"Verifica el plazo de respuesta señalado en el documento." },
+    otro:{ short:"Otro", label:"Otro documento", plazo:null, hint:"Define manualmente la fecha límite." }
+  };
+  var HOLIDAYS = new Set(["2026-01-01","2026-04-02","2026-04-03","2026-05-01","2026-06-07","2026-06-29","2026-07-23","2026-07-28","2026-07-29","2026-08-06","2026-08-30","2026-10-08","2026-11-01","2026-12-08","2026-12-09","2026-12-25","2027-01-01"]);
+  var MESES = ["ene","feb","mar","abr","may","jun","jul","ago","sep","oct","nov","dic"];
+
+  /* ---------- Fechas ---------- */
+  function pad(n){ return (n<10?"0":"")+n; }
+  function toISO(d){ return d.getFullYear()+"-"+pad(d.getMonth()+1)+"-"+pad(d.getDate()); }
+  function parseISO(s){ var p=String(s).slice(0,10).split("-"); return new Date(+p[0],(+p[1])-1,+p[2]); }
+  function todayISO(){ var d=new Date(); d.setHours(0,0,0,0); return toISO(d); }
+  function fmtDate(s){ if(!s) return "—"; var d=parseISO(s); return pad(d.getDate())+" "+MESES[d.getMonth()]+" "+d.getFullYear(); }
+  function isBiz(d){ var w=d.getDay(); return w!==0 && w!==6 && !HOLIDAYS.has(toISO(d)); }
+  function businessDaysUntil(iso){
+    if(!iso) return null;
+    var t=new Date(); t.setHours(0,0,0,0);
+    var target=parseISO(iso); target.setHours(0,0,0,0);
+    if(+target===+t) return 0;
+    var step=target>t?1:-1,count=0,cur=new Date(t),g=0;
+    while(+cur!==+target && g<4000){ cur.setDate(cur.getDate()+step); if(isBiz(cur)) count+=step; g++; }
+    return count;
+  }
+  function addBusinessDays(iso,n){ var d=parseISO(iso),a=0,g=0; while(a<n && g<4000){ d.setDate(d.getDate()+1); if(isBiz(d)) a++; g++; } return toISO(d); }
+
+  function plazoInfo(r){
+    if(r.estado==="resuelto") return { cls:"p-done", stripe:"var(--line-strong)", label:"Resuelto", sub: r.fecha_respuesta?("el "+fmtDate(r.fecha_respuesta)):"" };
+    if(!r.tipo || !r.fecha_limite) return { cls:"p-info", stripe:"var(--info)", label:"Sin clasificar", sub:"la central debe fijar el plazo" };
+    var d=businessDaysUntil(r.fecha_limite);
+    if(d===null) return { cls:"p-ok", stripe:"var(--line-strong)", label:"Sin plazo", sub:"" };
+    var u=function(n){ return n===1?"hábil":"hábiles"; };
+    if(d<0) return { cls:"p-crit", stripe:"var(--crit)", label:"Vencido", sub:"hace "+Math.abs(d)+" día"+(Math.abs(d)===1?"":"s")+" "+u(Math.abs(d)) };
+    if(d===0) return { cls:"p-crit", stripe:"var(--crit)", label:"Vence hoy", sub:"" };
+    if(d<=2) return { cls:"p-crit", stripe:"var(--crit)", label:"Vence en "+d+" día"+(d===1?"":"s"), sub:u(d) };
+    if(d<=5) return { cls:"p-warn", stripe:"var(--warn)", label:"Vence en "+d+" días", sub:"hábiles" };
+    return { cls:"p-ok", stripe:"var(--ok)", label:"Vence en "+d+" días", sub:"hábiles" };
+  }
+  function estadoOf(r){ return (!r.tipo && r.estado!=="resuelto" && r.estado!=="en_proceso") ? "nuevo" : r.estado; }
+  function estadoLabel(e){ return e==="nuevo"?"Sin clasificar":e==="en_proceso"?"En proceso":e==="resuelto"?"Resuelto":"Pendiente"; }
+
+  /* ---------- Estado global ---------- */
+  var role=null, myPin="", myCode="", myName="", myPerson="", myGestorEmail="";
+  var records=[], sucursales=[], gestores=[], quick="";
+  var drawerState=null, formPhotos=[], dPhotos=[], detailFiles=null, gesTimer=null;
+
+  var $=function(s,r){ return (r||document).querySelector(s); };
+  function esc(s){ return String(s==null?"":s).replace(/[&<>"']/g,function(c){ return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]; }); }
+  function LS(k,v){ try{ if(v===undefined) return localStorage.getItem(k); localStorage.setItem(k,v); }catch(e){ return null; } }
+  function toast(m){ var t=$("#toast"); t.textContent=m; t.classList.add("show"); clearTimeout(toast._t); toast._t=setTimeout(function(){ t.classList.remove("show"); },3000); }
+  function confirmBox(msg, opts){
+    opts=opts||{};
+    return new Promise(function(res){
+      var w=$("#confirm-wrap"), yes=$("#confirm-yes"), no=$("#confirm-no");
+      $("#confirm-msg").textContent=msg;
+      yes.textContent=opts.yes||"Aceptar"; no.textContent=opts.no||"Cancelar";
+      yes.className="btn "+(opts.danger?"btn-danger":"btn-primary");
+      w.hidden=false;
+      function done(v){ w.hidden=true; yes.onclick=null; no.onclick=null; w.onclick=null; document.removeEventListener("keydown",onKey,true); res(v); }
+      function onKey(e){ if(e.key==="Escape"){ e.stopPropagation(); done(false); } }
+      yes.onclick=function(){ done(true); }; no.onclick=function(){ done(false); };
+      w.onclick=function(e){ if(e.target===w) done(false); };
+      document.addEventListener("keydown",onKey,true); yes.focus();
+    });
+  }
+  function normPin(s){ return String(s||"").trim().toUpperCase(); }
+
+  /* ================= GATE ================= */
+  $("#gate-choices").addEventListener("click", function(e){
+    var b=e.target.closest(".choice"); if(!b) return;
+    $("#gate-choices").hidden=true;
+    if(b.getAttribute("data-role")==="gestor"){ $("#gate-gestor").hidden=false; setTimeout(function(){ $("#gg-email").focus(); },50); }
+    else { $("#gate-suc").hidden=false; setTimeout(function(){ $("#gate-suc-pin").focus(); },50); }
+  });
+  Array.prototype.forEach.call(document.querySelectorAll("[data-back]"), function(b){
+    b.addEventListener("click", function(){
+      $("#gate-suc").hidden=true; $("#gate-gestor").hidden=true; $("#gate-choices").hidden=false;
+      $("#gate-suc-err").hidden=true; $("#gg-err").hidden=true; $("#gg-ok").hidden=true;
+    });
+  });
+  $("#gate-suc-pin").addEventListener("input", function(){ $("#gate-suc-err").hidden=true; });
+  $("#gate-suc-pin").addEventListener("keydown", function(e){ if(e.key==="Enter"){ e.preventDefault(); sucLogin(); } });
+  $("#gate-suc-go").addEventListener("click", sucLogin);
+
+  function sucLogin(){
+    var pin=normPin($("#gate-suc-pin").value);
+    if(!pin){ sgErr("Escribe el PIN de tu sucursal."); return; }
+    var btn=$("#gate-suc-go"); btn.disabled=true; btn.innerHTML='<span class="spin"></span> Entrando…';
+    sb.rpc("login_sucursal", { p_pin: pin }).then(function(res){
+      btn.disabled=false; btn.textContent="Entrar";
+      if(res.error){ sgErr("No se pudo conectar. Revisa tu internet."); return; }
+      if(!res.data || !res.data.length){ sgErr("PIN no reconocido. Verifícalo o avisa a la oficina central."); return; }
+      var s=res.data[0];
+      myPin=pin; myCode=s.codigo; myName=s.nombre;
+      LS("br_pin",pin); LS("br_code",s.codigo); LS("br_name",s.nombre); LS("br_role","sucursal");
+      role="sucursal"; showView(); loadSucList();
+      toast("Sucursal: "+s.nombre);
+    });
+  }
+  function sgErr(m){ var e=$("#gate-suc-err"); e.textContent=m; e.hidden=false; }
+
+  $("#gg-email").addEventListener("input", function(){ $("#gg-err").hidden=true; $("#gg-ok").hidden=true; });
+  $("#gg-go").addEventListener("click", gestorLink);
+  function gestorLink(){
+    var email=$("#gg-email").value.trim().toLowerCase();
+    if(!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)){ ggErr("Escribe un correo válido."); return; }
+    var btn=$("#gg-go"); btn.disabled=true; btn.innerHTML='<span class="spin"></span> Enviando…';
+    sb.auth.signInWithOtp({ email:email, options:{ emailRedirectTo: location.origin + location.pathname } }).then(function(res){
+      btn.disabled=false; btn.textContent="Enviarme el enlace de acceso";
+      if(res.error){ ggErr(res.error.message || "No se pudo enviar el enlace."); return; }
+      var o=$("#gg-ok"); o.textContent="Listo. Revisa "+email+" y abre el enlace en este dispositivo."; o.hidden=false;
+    });
+  }
+  function ggErr(m){ var e=$("#gg-err"); e.textContent=m; e.hidden=false; }
+
+  /* ================= Vistas ================= */
+  function showView(){
+    $("#boot").hidden=true;
+    $("#gate").hidden = !!role;
+    $("#view-suc").hidden = role!=="sucursal";
+    $("#view-ges").hidden = role!=="gestor";
+    if(role==="sucursal"){
+      $("#suc-name").textContent=myName;
+      $("#suc-who").innerHTML = myPerson ? ('Registra: <b>'+esc(myPerson)+'</b>') : '';
+    }
+    if(role==="gestor"){
+      $("#ges-who").innerHTML = myGestorEmail ? ('Gestor: <b>'+esc(myGestorEmail)+'</b>') : '';
+    }
+    if(!role){ $("#gate-choices").hidden=false; $("#gate-suc").hidden=true; $("#gate-gestor").hidden=true; }
+  }
+
+  /* ---------- tarjeta ---------- */
+  function recordCard(r, opts){
+    opts=opts||{};
+    var p=plazoInfo(r), est=estadoOf(r);
+    var line = opts.hideSuc ? esc(r.institucion||"—") : (esc(r.sucursal_nombre||r.sucursal||"—")+" · "+esc(r.institucion||"—"));
+    return '<button class="row '+p.cls+'" style="--stripe:'+p.stripe+'" data-id="'+esc(r.id)+'">'
+      + '<div class="r-main"><div class="r-top">'
+        + (r.tipo?('<span class="badge">'+esc((TIPOS[r.tipo]||TIPOS.otro).short)+'</span>'):'')
+        + '<span class="pill pill-'+est+'">'+estadoLabel(est)+'</span>'
+        + (r.formato==="sobre_cerrado"?'<span class="pill pill-en_proceso">✉ Sobre cerrado</span>':'')
+        + (r.file_count?'<span class="clip">📎 '+r.file_count+'</span>':'')
+      + '</div><p class="r-desc">'+esc(r.comentario||"Sin comentario")+'</p></div>'
+      + '<div class="r-meta">'+line+'<span class="mono">'+esc(r.nro_expediente||r.registrado_por||"—")+'</span></div>'
+      + '<div class="r-when">Recibido<br>'+fmtDate(r.fecha_recepcion)+'</div>'
+      + '<div class="r-plazo '+p.cls+'"><b>'+esc(p.label)+'</b><span>'+esc(p.sub||("límite "+fmtDate(r.fecha_limite)))+'</span></div>'
+      + '</button>';
+  }
+
+  /* ================= SUCURSAL ================= */
+  function loadSucList(){
+    var el=$("#suc-list");
+    el.innerHTML='<div class="empty"><span class="spin"></span></div>';
+    sb.rpc("mis_registros", { p_pin: myPin }).then(function(res){
+      if(res.error){ el.innerHTML='<div class="empty"><h3>No se pudo cargar</h3><p>Revisa tu conexión y vuelve a entrar.</p></div>'; return; }
+      var mine = res.data||[];
+      if(!mine.length){ el.innerHTML='<div class="empty"><h3>Aún no hay registros</h3><p>Toca “Nuevo registro” cuando recibas un reclamo o un documento.</p></div>'; return; }
+      el.innerHTML = mine.map(function(r){ return recordCard(r,{hideSuc:true}); }).join("");
+      el._data = mine;
+    });
+  }
+  $("#suc-new").addEventListener("click", function(){ openForm(); });
+  $("#suc-exit").addEventListener("click", function(){
+    confirmBox("¿Salir y volver a la pantalla de inicio?", { yes:"Salir" }).then(function(ok){
+      if(!ok) return;
+      LS("br_pin",""); LS("br_code",""); LS("br_name",""); LS("br_role","");
+      role=null; myPin=""; myCode=""; myName=""; showView();
+    });
+  });
+  $("#suc-list").addEventListener("click", function(e){
+    var row=e.target.closest(".row"); if(!row) return;
+    var d=($("#suc-list")._data||[]).filter(function(r){ return String(r.id)===row.getAttribute("data-id"); })[0];
+    if(d) openDetail(d, true);
+  });
+
+  /* ================= Drawer ================= */
+  var drawerEl=$("#drawer"), backdropEl=$("#backdrop"), bodyEl=$("#drawer-body"), footEl=$("#drawer-foot");
+  function openDrawer(){ drawerEl.classList.add("open"); backdropEl.classList.add("open"); document.body.style.overflow="hidden"; }
+  function closeDrawer(){ drawerEl.classList.remove("open"); backdropEl.classList.remove("open"); document.body.style.overflow=""; drawerState=null; formPhotos=[]; dPhotos=[]; detailFiles=null; }
+  backdropEl.addEventListener("click", closeDrawer);
+  $("#drawer-close").addEventListener("click", closeDrawer);
+  document.addEventListener("keydown", function(e){ if(e.key==="Escape"){ if($("#lightbox").classList.contains("open")) closeLightbox(); else if(drawerEl.classList.contains("open")) closeDrawer(); } });
+
+  function fieldWrap(id,label,control,hint){ return '<div class="field" data-for="'+id+'"><label for="'+id+'">'+label+'</label>'+control+(hint?'<div class="hint">'+hint+'</div>':'')+'</div>'; }
+  function markInvalid(id,msg){ var f=document.querySelector('.field[data-for="'+id+'"]'); if(!f) return; f.classList.add("invalid"); var e=f.querySelector(".err"); if(!e){ e=document.createElement("div"); e.className="err"; f.appendChild(e); } e.textContent=msg; }
+  function clearInvalid(){ Array.prototype.forEach.call(document.querySelectorAll(".field.invalid"), function(f){ f.classList.remove("invalid"); var e=f.querySelector(".err"); if(e) e.textContent=""; }); }
+
+  /* ---------- Formulario ---------- */
+  function openForm(){
+    drawerState={ mode:"form" }; formPhotos=[];
+    $("#drawer-title").textContent="Registrar documento";
+    var t=todayISO();
+    var sucField = role==="sucursal"
+      ? '<div class="field"><label>Sucursal</label><input value="'+esc(myName)+'" disabled></div>'
+      : fieldWrap("f_suc","Sucursal","<select id='f_suc'><option value='' disabled selected>Elige…</option>"+sucursales.map(function(s){ return "<option value='"+esc(s.codigo)+"'>"+esc(s.nombre)+"</option>"; }).join("")+"</select>","");
+    bodyEl.innerHTML = [
+      sucField,
+      fieldWrap("f_person","¿Quién registra?","<input id='f_person' list='dl-personas' autocomplete='name' placeholder='Tu nombre'>",""),
+      fieldWrap("f_inst","Institución que emite el documento","<select id='f_inst'><option value='' disabled selected>Elige…</option>"+INSTITUCIONES.map(function(n){ return "<option>"+esc(n)+"</option>"; }).join("")+"</select>",""),
+      '<div class="field" id="f_inst_otra_wrap" hidden><label for="f_inst_otra">¿Cuál institución?</label><input id="f_inst_otra" autocomplete="off"></div>',
+      fieldWrap("f_recep","Fecha en que se recibió","<input id='f_recep' type='date' value='"+t+"' max='"+t+"'>","Importante para calcular el plazo de respuesta."),
+      fieldWrap("f_formato","¿Cómo llegó el documento?","<select id='f_formato'><option value='abierto' selected>Abierto / a la vista (notificación, acta, carta sin sobre)</option><option value='sobre_cerrado'>En sobre cerrado dirigido a la empresa o a un representante</option></select>",""),
+      '<div class="field"><label id="foto-label">Fotos del documento</label><div class="aviso" id="foto-aviso"></div>'
+        + '<div class="drop" id="drop" role="button" tabindex="0">Tomar foto o elegir imágenes<br><span style="font-size:11px">Se comprimen solas.</span></div>'
+        + '<input id="file-input" type="file" accept="image/*" capture="environment" multiple hidden><div class="thumbs" id="thumbs"></div></div>',
+      fieldWrap("f_com","Comentario adicional <span style=\"font-weight:400;color:var(--ink-soft)\">(opcional)</span>","<textarea id='f_com' placeholder='Qué pide el documento, número de hoja del libro, a quién se entregó, etc.'></textarea>","")
+    ].join("");
+    footEl.innerHTML='<button class="btn btn-ghost" id="form-cancel">Cancelar</button><button class="btn btn-primary" id="form-save">Guardar registro</button>';
+    openDrawer();
+    if(myPerson) $("#f_person").value=myPerson;
+    var fmt=$("#f_formato");
+    function updFmt(){
+      var sobre=fmt.value==="sobre_cerrado";
+      $("#foto-label").textContent = sobre?"Foto del sobre (sin abrir)":"Fotos del documento";
+      $("#foto-aviso").innerHTML = sobre
+        ? '<b>No abras el sobre.</b> Sube solo una foto del sobre por fuera: el frente (destinatario y remitente) y el reverso si tiene sellos o cargo. La oficina central lo abre y registra el contenido.'
+        : '<b>Sube todas las hojas.</b> Fotografía cada página completa, una foto por hoja, incluida la última con firmas y sellos.';
+    }
+    fmt.addEventListener("change", updFmt); updFmt();
+    $("#f_inst").addEventListener("change", function(){ $("#f_inst_otra_wrap").hidden = $("#f_inst").value!=="Otra"; });
+    $("#drop").addEventListener("click", function(){ $("#file-input").click(); });
+    $("#drop").addEventListener("keydown", function(e){ if(e.key==="Enter"||e.key===" "){ e.preventDefault(); $("#file-input").click(); } });
+    $("#file-input").addEventListener("change", function(e){ addFormPhotos(e.target.files); e.target.value=""; });
+    $("#form-cancel").addEventListener("click", closeDrawer);
+    $("#form-save").addEventListener("click", saveForm);
+  }
+
+  function loadImage(file){ return new Promise(function(res,rej){ var i=new Image(),u=URL.createObjectURL(file); i.onload=function(){ URL.revokeObjectURL(u); res(i); }; i.onerror=function(){ URL.revokeObjectURL(u); rej(new Error("img")); }; i.src=u; }); }
+  function compress(file){
+    return loadImage(file).then(function(img){
+      var max=1400, sc=Math.min(1,max/Math.max(img.width,img.height));
+      var w=Math.round(img.width*sc), h=Math.round(img.height*sc);
+      var c=document.createElement("canvas"); c.width=w; c.height=h; c.getContext("2d").drawImage(img,0,0,w,h);
+      return new Promise(function(res){
+        var q=0.7;
+        function go(){ c.toBlob(function(b){ if(b && (b.size>320000) && q>0.4){ q-=0.12; go(); } else res(b); }, "image/jpeg", q); }
+        go();
+      });
+    });
+  }
+  function addFormPhotos(files){
+    Array.prototype.slice.call(files||[]).forEach(function(f){
+      if(formPhotos.length>=10){ toast("Máximo 10 fotos."); return; }
+      if(f.type.indexOf("image/")!==0){ toast("Solo imágenes. Para PDF, fotografía cada hoja."); return; }
+      var ph={ name:f.name||("foto-"+(formPhotos.length+1)+".jpg"), blob:null, url:"", loading:true };
+      formPhotos.push(ph); renderFormThumbs();
+      compress(f).then(function(b){ ph.blob=b; ph.url=URL.createObjectURL(b); ph.loading=false; renderFormThumbs(); })
+        .catch(function(){ formPhotos.splice(formPhotos.indexOf(ph),1); toast("No se pudo procesar una imagen."); renderFormThumbs(); });
+    });
+  }
+  function renderFormThumbs(){
+    var el=$("#thumbs"); if(!el) return;
+    el.innerHTML=formPhotos.map(function(p,i){ return p.loading?'<div class="thumb doc">procesando<span class="spin" style="margin-top:6px"></span></div>':'<div class="thumb"><img src="'+p.url+'" alt=""><button class="x" data-i="'+i+'" aria-label="Quitar">✕</button></div>'; }).join("");
+    Array.prototype.forEach.call(el.querySelectorAll(".x"), function(b){ b.addEventListener("click", function(){ formPhotos.splice(+b.getAttribute("data-i"),1); renderFormThumbs(); }); });
+  }
+
+  function saveForm(){
+    clearInvalid();
+    var sucCodigo = role==="sucursal" ? myCode : ($("#f_suc")? $("#f_suc").value : "");
+    var inst=$("#f_inst").value; if(inst==="Otra") inst=$("#f_inst_otra").value.trim();
+    var person=$("#f_person").value.trim();
+    var bad=false;
+    if(role!=="sucursal" && !sucCodigo){ markInvalid("f_suc","Elige la sucursal."); bad=true; }
+    if(!person){ markInvalid("f_person","Escribe tu nombre."); bad=true; }
+    if(!inst){ markInvalid("f_inst","Elige la institución."); bad=true; }
+    if(!$("#f_recep").value){ markInvalid("f_recep","Falta la fecha de recepción."); bad=true; }
+    if(formPhotos.some(function(p){ return p.loading; })){ toast("Espera a que terminen de procesarse las fotos."); bad=true; }
+    if(bad) return;
+    var noFotos = !formPhotos.some(function(p){ return p.blob; });
+    (noFotos ? confirmBox("No adjuntaste ninguna foto. ¿Guardar de todos modos?", { yes:"Guardar" }) : Promise.resolve(true)).then(function(ok){
+      if(!ok) return;
+      myPerson=person; LS("br_person",person);
+      var btn=$("#form-save"); btn.disabled=true; btn.innerHTML='<span class="spin"></span> Guardando…';
+      var photos=formPhotos.filter(function(p){ return p.blob; });
+      var pinForCall = role==="sucursal" ? myPin : sucPinFor(sucCodigo);
+      sb.rpc("crear_registro", {
+        p_pin: pinForCall,
+        p_registrado_por: person,
+        p_institucion: inst,
+        p_fecha_recepcion: $("#f_recep").value,
+        p_formato: $("#f_formato").value,
+        p_comentario: $("#f_com").value.trim()
+      }).then(function(res){
+        if(res.error){ throw res.error; }
+        var id=res.data;
+        return photos.reduce(function(ch,p,idx){
+          return ch.then(function(){
+            var path=id+"/"+Date.now()+"-"+idx+".jpg";
+            return sb.storage.from("fotos").upload(path, p.blob, { contentType:"image/jpeg", upsert:false }).then(function(u){
+              if(u.error) throw u.error;
+              return sb.rpc("agregar_foto", { p_record_id:id, p_path:path, p_nombre:p.name });
+            });
+          });
+        }, Promise.resolve());
+      }).then(function(){
+        toast("Registro guardado. Gracias.");
+        closeDrawer();
+        if(role==="sucursal") loadSucList(); else refreshGes();
+      }).catch(function(err){
+        btn.disabled=false; btn.textContent="Guardar registro";
+        toast((err && err.message) ? ("No se pudo guardar: "+err.message) : "No se pudo guardar. Intenta de nuevo.");
+      });
+    });
+  }
+  function sucPinFor(code){ var s=sucursales.filter(function(x){ return x.codigo===code; })[0]; return s?s.pin:""; }
+
+  /* ---------- Detalle ---------- */
+  function openDetail(r, readOnly){
+    drawerState={ mode:"detail", id:r.id, ro:!!readOnly };
+    $("#drawer-title").textContent=(r.tipo?(TIPOS[r.tipo]||TIPOS.otro).short:"Documento");
+    dPhotos=[];
+    bodyEl.innerHTML=detailHTML(r, readOnly);
+    if(readOnly){
+      footEl.innerHTML='<button class="btn btn-ghost" id="d-close">Cerrar</button>';
+      $("#d-close").addEventListener("click", closeDrawer);
+    } else {
+      footEl.innerHTML='<button class="btn btn-danger" id="d-del">Eliminar</button><button class="btn btn-primary" id="d-save">Guardar cambios</button>';
+      $("#d-del").addEventListener("click", function(){ delRecord(r); });
+      $("#d-save").addEventListener("click", function(){ saveDetail(r); });
+      wireDetail(r);
+      if($("#d-drop")){
+        $("#d-drop").addEventListener("click", function(){ $("#d-file").click(); });
+        $("#d-file").addEventListener("change", function(e){ addDPhotos(e.target.files); e.target.value=""; });
+      }
+    }
+    openDrawer();
+    loadDetailFiles(r, readOnly);
+  }
+  function dlRow(dt,dd){ return '<dt>'+dt+'</dt><dd>'+dd+'</dd>'; }
+
+  function detailHTML(r, readOnly){
+    var p=plazoInfo(r), est=estadoOf(r), editable=!readOnly;
+    var h=[];
+    h.push('<div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:12px">'
+      + (r.tipo?'<span class="badge">'+esc((TIPOS[r.tipo]||TIPOS.otro).label)+'</span>':'')
+      + '<span class="pill pill-'+est+'">'+estadoLabel(est)+'</span></div>');
+    h.push('<div class="plazo-box '+p.cls+'" style="--stripe:'+p.stripe+'"><b>'+esc(p.label)+'</b><span>'
+      + esc(r.fecha_limite ? ("Fecha límite: "+fmtDate(r.fecha_limite)+(p.sub?(" · "+p.sub):"")) : (p.sub||"")) + '</span></div>');
+
+    h.push('<div class="section-t">Lo que envió la sucursal</div>');
+    h.push('<dl class="dl">'
+      + (r.sucursal_nombre?dlRow("Sucursal", esc(r.sucursal_nombre)):"")
+      + dlRow("Registró", esc(r.registrado_por||"—"))
+      + dlRow("Institución", esc(r.institucion||"—"))
+      + dlRow("Recibido", fmtDate(r.fecha_recepcion))
+      + dlRow("Formato", r.formato==="sobre_cerrado"?"Sobre cerrado (la sucursal no lo abrió)":"Abierto / a la vista")
+      + dlRow("Comentario", esc(r.comentario||"—")) + '</dl>');
+    if(r.formato==="sobre_cerrado" && editable) h.push('<div class="aviso" style="margin-top:-6px">La sucursal subió solo la foto del sobre. <b>Ábrelo, sube las hojas del contenido</b> con “Agregar fotos” y luego clasifícalo.</div>');
+
+    h.push('<div class="section-t">Documentos adjuntos</div><div class="thumbs" id="detail-thumbs"><div class="thumb doc">cargando…<span class="spin" style="margin-top:6px"></span></div></div>');
+    if(editable) h.push('<div class="drop" id="d-drop" role="button" tabindex="0" style="margin-top:8px">＋ Agregar fotos (hojas del contenido, cargo de respuesta…)</div><input id="d-file" type="file" accept="image/*" capture="environment" multiple hidden><div class="thumbs" id="d-new-thumbs"></div>');
+
+    h.push('<div class="section-t">Clasificación y respuesta — gestor</div>');
+    if(editable){
+      h.push(fieldWrap("d_tipo","Tipo de documento","<select id='d_tipo'><option value=''>Sin clasificar</option>"+Object.keys(TIPOS).map(function(k){ return "<option value='"+k+"'"+(r.tipo===k?" selected":"")+">"+esc(TIPOS[k].label)+"</option>"; }).join("")+"</select>", '<span id="d_tipo_hint">'+esc(r.tipo?(TIPOS[r.tipo]||TIPOS.otro).hint:"Al elegir el tipo se calcula una fecha límite sugerida.")+'</span>'));
+      h.push('<div class="grid2">'
+        + fieldWrap("d_recep","Fecha de recepción","<input id='d_recep' type='date' value='"+esc(r.fecha_recepcion||todayISO())+"' max='"+todayISO()+"'>","")
+        + fieldWrap("d_limite","Fecha límite","<input id='d_limite' type='date' value='"+esc(r.fecha_limite||"")+"'>","") + '</div>');
+      h.push('<p class="hint" style="margin:-6px 0 14px"><button type="button" class="relink" id="d_recalc">Recalcular límite en días hábiles</button></p>');
+      h.push(fieldWrap("d_exp","N° de hoja del libro o de expediente <span style=\"font-weight:400;color:var(--ink-soft)\">(opcional)</span>","<input id='d_exp' value='"+esc(r.nro_expediente||"")+"' autocomplete='off'>",""));
+      h.push(fieldWrap("d_estado","Estado","<select id='d_estado'><option value='pendiente'"+(r.estado==="pendiente"?" selected":"")+">Pendiente</option><option value='en_proceso'"+(r.estado==="en_proceso"?" selected":"")+">En proceso</option><option value='resuelto'"+(r.estado==="resuelto"?" selected":"")+">Resuelto</option></select>",""));
+      h.push('<div class="field" id="d_fresp_wrap" '+(r.estado==="resuelto"?"":"hidden")+'><label for="d_fresp">Fecha de respuesta</label><input id="d_fresp" type="date" value="'+esc(r.fecha_respuesta||todayISO())+'" max="'+todayISO()+'"></div>');
+      h.push(fieldWrap("d_nota","Nota de respuesta / acciones tomadas","<textarea id='d_nota' placeholder='Qué se respondió, número de cargo, a quién se derivó…'>"+esc(r.respuesta_nota||"")+"</textarea>",""));
+    } else {
+      h.push('<dl class="dl">'+dlRow("Estado", estadoLabel(est))
+        + (r.tipo?dlRow("Tipo", esc((TIPOS[r.tipo]||TIPOS.otro).label)):"")
+        + (r.fecha_limite?dlRow("Fecha límite", fmtDate(r.fecha_limite)):"")
+        + (r.nro_expediente?dlRow("Expediente", '<span class="mono">'+esc(r.nro_expediente)+'</span>'):"")
+        + (r.respuesta_nota?dlRow("Nota", esc(r.respuesta_nota)):"")
+        + (r.fecha_respuesta?dlRow("Respondido", fmtDate(r.fecha_respuesta)):"") + '</dl>');
+      if(est==="nuevo") h.push('<p class="hint">El gestor aún no clasifica este documento.</p>');
+    }
+    return h.join("");
+  }
+  function wireDetail(r){
+    var manual=!!r.fecha_limite;
+    function recalc(){ var tipo=$("#d_tipo").value, recep=$("#d_recep").value, pz=TIPOS[tipo]?TIPOS[tipo].plazo:null; if(recep && pz){ $("#d_limite").value=addBusinessDays(recep,pz); manual=false; } }
+    $("#d_tipo").addEventListener("change", function(){ $("#d_tipo_hint").textContent = TIPOS[$("#d_tipo").value]?TIPOS[$("#d_tipo").value].hint:"Al elegir el tipo se calcula una fecha límite sugerida."; if(!manual) recalc(); });
+    $("#d_recep").addEventListener("change", function(){ if(!manual) recalc(); });
+    $("#d_limite").addEventListener("input", function(){ manual=true; });
+    $("#d_recalc").addEventListener("click", recalc);
+    $("#d_estado").addEventListener("change", function(){ $("#d_fresp_wrap").hidden = $("#d_estado").value!=="resuelto"; });
+  }
+  function addDPhotos(files){
+    Array.prototype.slice.call(files||[]).forEach(function(f){
+      if(dPhotos.length>=12){ toast("Máximo 12 fotos por vez."); return; }
+      if(f.type.indexOf("image/")!==0){ toast("Solo imágenes."); return; }
+      var ph={ name:f.name||("hoja.jpg"), blob:null, url:"", loading:true };
+      dPhotos.push(ph); renderDThumbs();
+      compress(f).then(function(b){ ph.blob=b; ph.url=URL.createObjectURL(b); ph.loading=false; renderDThumbs(); })
+        .catch(function(){ dPhotos.splice(dPhotos.indexOf(ph),1); renderDThumbs(); });
+    });
+  }
+  function renderDThumbs(){
+    var el=$("#d-new-thumbs"); if(!el) return;
+    el.innerHTML=dPhotos.map(function(p,i){ return p.loading?'<div class="thumb doc">procesando<span class="spin" style="margin-top:6px"></span></div>':'<div class="thumb"><img src="'+p.url+'" alt=""><button class="x" data-i="'+i+'" aria-label="Quitar">✕</button></div>'; }).join("");
+    Array.prototype.forEach.call(el.querySelectorAll(".x"), function(b){ b.addEventListener("click", function(){ dPhotos.splice(+b.getAttribute("data-i"),1); renderDThumbs(); }); });
+  }
+  function loadDetailFiles(r, readOnly){
+    var box=function(){ return $("#detail-thumbs"); };
+    if(!r.file_count){ if(box()) box().innerHTML='<div class="thumb doc">sin adjuntos</div>'; return; }
+    if(readOnly){ if(box()) box().innerHTML='<div class="thumb doc">'+r.file_count+' foto(s)</div>'; return; }
+    sb.from("record_files").select("path,nombre").eq("record_id", r.id).order("created_at").then(function(res){
+      if(!box()) return;
+      if(res.error || !res.data || !res.data.length){ box().innerHTML='<div class="thumb doc">'+(res.error?"no se pudo cargar":"sin adjuntos")+'</div>'; return; }
+      Promise.all(res.data.map(function(f){ return sb.storage.from("fotos").createSignedUrl(f.path, 3600).then(function(u){ return u.data?u.data.signedUrl:""; }); })).then(function(urls){
+        detailFiles=urls.filter(Boolean);
+        box().innerHTML=detailFiles.map(function(u,i){ return '<div class="thumb"><img src="'+u+'" alt="adjunto" data-i="'+i+'" loading="lazy"></div>'; }).join("") || '<div class="thumb doc">sin vista previa</div>';
+        Array.prototype.forEach.call(box().querySelectorAll("img"), function(im){ im.style.cursor="zoom-in"; im.addEventListener("click", function(){ openLightbox(detailFiles[+im.getAttribute("data-i")]); }); });
+      });
+    });
+  }
+  function saveDetail(r){
+    if(dPhotos.some(function(p){ return p.loading; })){ toast("Espera a que terminen de procesarse las fotos."); return; }
+    var estado=$("#d_estado").value;
+    var patch={
+      tipo:$("#d_tipo").value||"",
+      fecha_recepcion:$("#d_recep").value||r.fecha_recepcion,
+      fecha_limite:$("#d_limite").value||null,
+      nro_expediente:$("#d_exp").value.trim(),
+      estado:estado,
+      respuesta_nota:$("#d_nota").value.trim(),
+      fecha_respuesta: estado==="resuelto" ? ($("#d_fresp").value||todayISO()) : null,
+      updated_at: new Date().toISOString()
+    };
+    var news=dPhotos.filter(function(p){ return p.blob; });
+    var btn=$("#d-save"); btn.disabled=true; btn.innerHTML='<span class="spin"></span> Guardando…';
+    news.reduce(function(ch,p,idx){
+      return ch.then(function(){
+        var path=r.id+"/"+Date.now()+"-g"+idx+".jpg";
+        return sb.storage.from("fotos").upload(path, p.blob, { contentType:"image/jpeg" }).then(function(u){
+          if(u.error) throw u.error;
+          return sb.from("record_files").insert({ record_id:r.id, path:path, nombre:p.name });
+        });
+      });
+    }, Promise.resolve()).then(function(){
+      if(news.length) patch.file_count=(r.file_count||0)+news.length;
+      return sb.from("records").update(patch).eq("id", r.id);
+    }).then(function(res){
+      if(res.error) throw res.error;
+      toast("Cambios guardados."); closeDrawer(); refreshGes();
+    }).catch(function(err){
+      btn.disabled=false; btn.textContent="Guardar cambios";
+      toast((err&&err.message)?("No se pudo guardar: "+err.message):"No se pudo guardar.");
+    });
+  }
+  function delRecord(r){
+    confirmBox("¿Eliminar este registro y sus fotos? No se puede deshacer.", { yes:"Eliminar", danger:true }).then(function(ok){
+      if(!ok) return;
+      var btn=$("#d-del"); btn.disabled=true; btn.innerHTML='<span class="spin"></span>';
+      sb.from("record_files").select("path").eq("record_id", r.id).then(function(res){
+        var paths=(res.data||[]).map(function(x){ return x.path; });
+        var p = paths.length ? sb.storage.from("fotos").remove(paths) : Promise.resolve();
+        return p.then(function(){ return sb.from("records").delete().eq("id", r.id); });
+      }).then(function(){ toast("Registro eliminado."); closeDrawer(); refreshGes(); })
+      .catch(function(){ btn.disabled=false; btn.textContent="Eliminar"; toast("No se pudo eliminar."); });
+    });
+  }
+
+  /* ================= GESTOR ================= */
+  function startGestor(email){
+    role="gestor"; myGestorEmail=email; showView();
+    refreshGes(); loadConfig();
+    if(gesTimer) clearInterval(gesTimer);
+    gesTimer=setInterval(refreshGes, 25000);
+  }
+  function refreshGes(){
+    sb.from("records").select("*").order("created_at",{ascending:false}).then(function(res){
+      if(res.error){ if(res.error.message) toast("No se pudo cargar: "+res.error.message); return; }
+      records=res.data||[]; renderGes();
+    });
+  }
+  function loadConfig(){
+    sb.from("sucursales").select("*").order("nombre").then(function(res){ if(!res.error) sucursales=res.data||[]; renderGes(); });
+    sb.from("gestores").select("*").order("nombre").then(function(res){ if(!res.error) gestores=res.data||[]; });
+  }
+  function renderGes(){
+    if(role!=="gestor") return;
+    var fs=$("#f-sucursal").value, fi=$("#f-institucion").value, fe=$("#f-estado").value, fq=$("#f-q").value.trim().toLowerCase();
+    var today=new Date(); today.setHours(0,0,0,0);
+    var shown=records.filter(function(r){
+      if(fs && r.sucursal_nombre!==fs) return false;
+      if(fi && r.institucion!==fi) return false;
+      if(fe && estadoOf(r)!==fe) return false;
+      if(fq){ var hay=((r.nro_expediente||"")+" "+(r.comentario||"")+" "+(r.institucion||"")+" "+(r.sucursal_nombre||"")+" "+(r.registrado_por||"")).toLowerCase(); if(hay.indexOf(fq)<0) return false; }
+      if(quick){
+        var d=businessDaysUntil(r.fecha_limite);
+        if(quick==="nuevos") return estadoOf(r)==="nuevo";
+        if(quick==="vencidos") return r.estado!=="resuelto" && r.tipo && d!==null && d<0;
+        if(quick==="urgentes") return r.estado!=="resuelto" && r.tipo && d!==null && d>=0 && d<=5;
+        if(quick==="resueltos") return r.estado==="resuelto" && r.fecha_respuesta && (today-parseISO(r.fecha_respuesta))/86400000<=30;
+      }
+      return true;
+    });
+    shown.sort(function(a,b){
+      var ra=rank(a), rb=rank(b); if(ra!==rb) return ra-rb;
+      var da=businessDaysUntil(a.fecha_limite), db=businessDaysUntil(b.fecha_limite);
+      if(da===null) da=99999; if(db===null) db=99999;
+      if(a.estado==="resuelto") return new Date(b.created_at)-new Date(a.created_at);
+      return da-db;
+    });
+    function rank(r){ if(estadoOf(r)==="nuevo") return 0; if(r.estado==="resuelto") return 2; return 1; }
+
+    var nn=0,nv=0,nu=0,nr=0;
+    records.forEach(function(r){
+      var d=businessDaysUntil(r.fecha_limite), est=estadoOf(r);
+      if(est==="nuevo") nn++;
+      if(r.estado!=="resuelto" && r.tipo && d!==null){ if(d<0) nv++; else if(d<=5) nu++; }
+      if(r.estado==="resuelto" && r.fecha_respuesta && (today-parseISO(r.fecha_respuesta))/86400000<=30) nr++;
+    });
+    $("#n-nuevos").textContent=nn; $("#n-vencidos").textContent=nv; $("#n-urgentes").textContent=nu; $("#n-resueltos").textContent=nr;
+    $("#count-note").textContent=shown.length+(shown.length===1?" registro":" registros");
+
+    var sSel=$("#f-sucursal"), cur=sSel.value, names=[];
+    records.forEach(function(r){ if(r.sucursal_nombre && names.indexOf(r.sucursal_nombre)<0) names.push(r.sucursal_nombre); });
+    sucursales.forEach(function(s){ if(s.nombre && names.indexOf(s.nombre)<0) names.push(s.nombre); });
+    names.sort();
+    sSel.innerHTML='<option value="">Todas las sucursales</option>'+names.map(function(n){ return '<option>'+esc(n)+'</option>'; }).join("");
+    sSel.value = names.indexOf(cur)>=0?cur:"";
+    var iSel=$("#f-institucion"), iCur=iSel.value;
+    iSel.innerHTML='<option value="">Todas las instituciones</option>'+INSTITUCIONES.map(function(n){ return '<option>'+esc(n)+'</option>'; }).join("");
+    iSel.value=iCur;
+
+    var list=$("#ges-list");
+    if(!shown.length){ list.innerHTML='<div class="empty"><h3>'+(records.length?"Nada por aquí":"Todavía sin registros")+'</h3><p>'+(records.length?"Ningún registro coincide con los filtros.":"Cuando una sucursal registre un documento, aparecerá aquí.")+'</p></div>'; return; }
+    list.innerHTML=shown.map(function(r){ return recordCard(r); }).join("");
+  }
+  $("#ges-list").addEventListener("click", function(e){
+    var row=e.target.closest(".row"); if(!row) return;
+    var r=records.filter(function(x){ return String(x.id)===row.getAttribute("data-id"); })[0];
+    if(r) openDetail(r, false);
+  });
+  $("#tiles").addEventListener("click", function(e){
+    var t=e.target.closest(".tile"); if(!t) return;
+    var q=t.getAttribute("data-quick"); quick = quick===q?"":q;
+    Array.prototype.forEach.call(document.querySelectorAll(".tile"), function(el){ el.setAttribute("aria-pressed", el.getAttribute("data-quick")===quick?"true":"false"); });
+    renderGes();
+  });
+  ["f-sucursal","f-institucion","f-estado","f-q"].forEach(function(id){ $("#"+id).addEventListener("input", renderGes); });
+  $("#ges-new").addEventListener("click", function(){ openForm(); });
+  $("#ges-exit").addEventListener("click", function(){
+    confirmBox("¿Cerrar sesión de gestor?", { yes:"Salir" }).then(function(ok){ if(!ok) return; sb.auth.signOut().then(function(){ role=null; myGestorEmail=""; if(gesTimer) clearInterval(gesTimer); showView(); }); });
+  });
+
+  /* ---------- Admin sucursales ---------- */
+  $("#btn-sucursales").addEventListener("click", function(){
+    drawerState={ mode:"admin-suc" };
+    $("#drawer-title").textContent="Sucursales";
+    var items=sucursales.map(function(s){ return { codigo:s.codigo, nombre:s.nombre, pin:s.pin, _orig:s.codigo }; });
+    bodyEl.innerHTML='<p class="hint" style="margin-bottom:12px">Cada sucursal entra con su PIN. El nombre es lo que se muestra en la bandeja.</p><div id="a-rows"></div><button class="btn btn-block" id="a-add" style="margin-top:6px">＋ Agregar sucursal</button>';
+    var rows=$("#a-rows");
+    function draw(){
+      rows.innerHTML=items.map(function(it,i){ return '<div class="suc-admin-row"><input data-i="'+i+'" data-k="nombre" value="'+esc(it.nombre)+'" placeholder="Nombre de la sucursal"><input class="code" data-i="'+i+'" data-k="pin" value="'+esc(it.pin)+'" placeholder="PIN"><button class="icon-btn" data-del="'+i+'" aria-label="Quitar">🗑</button></div>'; }).join("") || '<p class="hint">Aún no hay sucursales.</p>';
+      Array.prototype.forEach.call(rows.querySelectorAll("input"), function(inp){ inp.addEventListener("input", function(){ items[+inp.getAttribute("data-i")][inp.getAttribute("data-k")]=inp.value; }); });
+      Array.prototype.forEach.call(rows.querySelectorAll("[data-del]"), function(b){ b.addEventListener("click", function(){ items.splice(+b.getAttribute("data-del"),1); draw(); }); });
+    }
+    draw();
+    $("#a-add").addEventListener("click", function(){ items.push({ codigo:"", nombre:"", pin:"" }); draw(); });
+    footEl.innerHTML='<button class="btn btn-ghost" id="a-close">Cerrar</button><button class="btn btn-primary" id="a-save">Guardar</button>';
+    $("#a-close").addEventListener("click", closeDrawer);
+    $("#a-save").addEventListener("click", function(){
+      var clean=items.filter(function(it){ return (it.nombre||"").trim() && (it.pin||"").trim(); })
+        .map(function(it){ var n=it.nombre.trim(); return { codigo: (it._orig||n), nombre:n, pin:normPin(it.pin) }; });
+      if(!clean.length){ toast("Cada sucursal necesita nombre y PIN."); return; }
+      var pins={}; for(var i=0;i<clean.length;i++){ if(pins[clean[i].pin]){ toast("Hay dos sucursales con el mismo PIN."); return; } pins[clean[i].pin]=1; }
+      var btn=$("#a-save"); btn.disabled=true; btn.innerHTML='<span class="spin"></span>';
+      var keep=clean.map(function(c){ return c.codigo; });
+      var toDelete=sucursales.filter(function(s){ return keep.indexOf(s.codigo)<0; }).map(function(s){ return s.codigo; });
+      var chain= toDelete.length ? sb.from("sucursales").delete().in("codigo", toDelete) : Promise.resolve({});
+      chain.then(function(){ return sb.from("sucursales").upsert(clean, { onConflict:"codigo" }); })
+        .then(function(res){ if(res.error) throw res.error; toast("Sucursales actualizadas."); closeDrawer(); loadConfig(); })
+        .catch(function(err){ btn.disabled=false; btn.textContent="Guardar"; toast((err&&err.message)?("No se pudo: "+err.message):"No se pudo guardar."); });
+    });
+    openDrawer();
+  });
+
+  /* ---------- Admin gestores ---------- */
+  $("#btn-gestores").addEventListener("click", function(){
+    drawerState={ mode:"admin-ges" };
+    $("#drawer-title").textContent="Gestores";
+    var items=gestores.map(function(g){ return { email:g.email, nombre:g.nombre, _orig:g.email }; });
+    bodyEl.innerHTML='<p class="hint" style="margin-bottom:12px">Correos autorizados para entrar como gestor. Cada uno recibe un enlace de acceso a su correo. Debe quedar al menos uno (el tuyo).</p><div id="g-rows"></div><button class="btn btn-block" id="g-add" style="margin-top:6px">＋ Agregar gestor</button>';
+    var rows=$("#g-rows");
+    function draw(){
+      rows.innerHTML=items.map(function(it,i){ return '<div class="suc-admin-row"><input data-i="'+i+'" data-k="nombre" value="'+esc(it.nombre)+'" placeholder="Nombre"><input data-i="'+i+'" data-k="email" value="'+esc(it.email)+'" placeholder="correo@dominio.com" type="email"><button class="icon-btn" data-del="'+i+'" aria-label="Quitar">🗑</button></div>'; }).join("") || '<p class="hint">Aún no hay gestores.</p>';
+      Array.prototype.forEach.call(rows.querySelectorAll("input"), function(inp){ inp.addEventListener("input", function(){ items[+inp.getAttribute("data-i")][inp.getAttribute("data-k")]=inp.value; }); });
+      Array.prototype.forEach.call(rows.querySelectorAll("[data-del]"), function(b){ b.addEventListener("click", function(){ items.splice(+b.getAttribute("data-del"),1); draw(); }); });
+    }
+    draw();
+    $("#g-add").addEventListener("click", function(){ items.push({ email:"", nombre:"" }); draw(); });
+    footEl.innerHTML='<button class="btn btn-ghost" id="g-close">Cerrar</button><button class="btn btn-primary" id="g-save">Guardar</button>';
+    $("#g-close").addEventListener("click", closeDrawer);
+    $("#g-save").addEventListener("click", function(){
+      var clean=items.filter(function(it){ return /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test((it.email||"").trim()) && (it.nombre||"").trim(); })
+        .map(function(it){ return { email:it.email.trim().toLowerCase(), nombre:it.nombre.trim() }; });
+      if(!clean.length){ toast("Debe quedar al menos un gestor con correo válido."); return; }
+      var btn=$("#g-save"); btn.disabled=true; btn.innerHTML='<span class="spin"></span>';
+      var keep=clean.map(function(c){ return c.email; });
+      var toDelete=gestores.filter(function(g){ return keep.indexOf(g.email)<0; }).map(function(g){ return g.email; });
+      var chain= toDelete.length ? sb.from("gestores").delete().in("email", toDelete) : Promise.resolve({});
+      chain.then(function(){ return sb.from("gestores").upsert(clean, { onConflict:"email" }); })
+        .then(function(res){ if(res.error) throw res.error; toast("Gestores actualizados."); closeDrawer(); loadConfig(); })
+        .catch(function(err){ btn.disabled=false; btn.textContent="Guardar"; toast((err&&err.message)?("No se pudo: "+err.message):"No se pudo guardar."); });
+    });
+    openDrawer();
+  });
+
+  /* ---------- CSV ---------- */
+  $("#btn-export").addEventListener("click", function(){
+    var head=["Sucursal","Institucion","Registro","Recibido","Formato","Tipo","Fecha limite","Dias habiles restantes","Estado","Fecha respuesta","Expediente","Comentario","Nota respuesta"];
+    var rows=records.map(function(r){
+      var d=businessDaysUntil(r.fecha_limite);
+      return [r.sucursal_nombre,r.institucion,r.registrado_por,r.fecha_recepcion,(r.formato==="sobre_cerrado"?"Sobre cerrado":"Abierto"),(r.tipo?(TIPOS[r.tipo]||TIPOS.otro).short:""),r.fecha_limite,(d===null?"":d),estadoLabel(estadoOf(r)),r.fecha_respuesta,r.nro_expediente,r.comentario,r.respuesta_nota];
+    });
+    var csv=[head].concat(rows).map(function(row){ return row.map(function(c){ c=String(c==null?"":c); return /[",;\n]/.test(c)?'"'+c.replace(/"/g,'""')+'"':c; }).join(";"); }).join("\r\n");
+    var blob=new Blob(["﻿"+csv], { type:"text/csv;charset=utf-8" });
+    var a=document.createElement("a"); a.href=URL.createObjectURL(blob); a.download="reclamos-"+todayISO()+".csv"; a.click();
+    setTimeout(function(){ URL.revokeObjectURL(a.href); }, 2000);
+  });
+
+  /* ---------- Lightbox ---------- */
+  function openLightbox(src){ $("#lightbox-img").src=src; $("#lightbox").classList.add("open"); }
+  function closeLightbox(){ $("#lightbox").classList.remove("open"); $("#lightbox-img").src=""; }
+  $("#lightbox").addEventListener("click", function(e){ if(e.target.id==="lightbox"||e.target.classList.contains("x")) closeLightbox(); });
+
+  /* ================= Arranque ================= */
+  function boot(){
+    if(SUPABASE_URL.indexOf("TU-PROYECTO")>=0){
+      $("#boot").innerHTML='<div style="max-width:420px;text-align:center;padding:20px"><b>Falta configurar Supabase.</b><br><br>Edita el <code>index.html</code>: pon tu <code>SUPABASE_URL</code> y tu <code>SUPABASE_ANON_KEY</code> al inicio del &lt;script&gt;.</div>';
+      return;
+    }
+    myPerson = LS("br_person") || "";
+    sb.auth.getSession().then(function(res){
+      var session = res.data && res.data.session;
+      if(session && session.user && session.user.email){
+        checkGestor(session.user.email);
+        return;
+      }
+      // ¿sucursal recordada?
+      if(LS("br_role")==="sucursal" && LS("br_pin")){
+        myPin=LS("br_pin"); myCode=LS("br_code")||""; myName=LS("br_name")||"";
+        role="sucursal"; showView(); loadSucList(); return;
+      }
+      showView();
+    });
+    sb.auth.onAuthStateChange(function(evt, session){
+      if(session && session.user && session.user.email && role!=="gestor"){
+        checkGestor(session.user.email);
+      }
+    });
+  }
+  function checkGestor(email){
+    sb.rpc("es_gestor").then(function(res){
+      if(res.data===true){ startGestor(email); return; }
+      role=null; showView();
+      $("#gate-choices").hidden=true; $("#gate-gestor").hidden=false;
+      ggErr("El correo "+email+" no está autorizado como gestor. Pide que te agreguen a la lista.");
+      sb.auth.signOut();
+    }).catch(function(){
+      role=null; showView();
+      toast("No se pudo verificar el acceso. Revisa tu conexión y recarga.");
+    });
+  }
+
+  boot();
+})();
+</script>
+</body>
+</html>
