@@ -88,7 +88,9 @@
   .gate-step{margin-top:6px}
   .gate-card .gate-step label{display:block;font-size:12.5px;font-weight:600;margin-bottom:6px}
   .gate-card .gate-step input{width:100%;font-family:var(--font-mono);font-size:16px;letter-spacing:.06em;text-transform:uppercase;padding:11px 12px;border:1px solid var(--line-strong);border-radius:9px;background:var(--surface);color:var(--ink)}
-  .gate-card .gate-step input#gg-email{text-transform:none;letter-spacing:normal;font-family:var(--font-body);font-size:15px}
+  .gate-card .gate-step input#gg-email,
+  .gate-card .gate-step input[type="email"],
+  .gate-card .gate-step input[type="password"]{text-transform:none;letter-spacing:normal;font-family:var(--font-body);font-size:15px}
   .gate-card .gate-step input:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
   .gate-step .err{color:var(--crit-ink);font-size:12px;margin-top:7px}
   .gate-step .ok{color:var(--ok-ink);font-size:12.5px;margin-top:8px}
@@ -263,13 +265,15 @@
     <div class="gate-step" id="gate-gestor" hidden>
       <button class="gate-back" data-back>← Volver</button>
       <div class="field" style="margin-bottom:0">
-        <label for="gg-email">Tu correo (gestor autorizado)</label>
+        <label for="gg-email">Correo (gestor autorizado)</label>
         <input id="gg-email" type="email" autocomplete="email" placeholder="nombre@correo.com">
+        <label for="gg-pass" style="margin-top:12px">Contraseña</label>
+        <input id="gg-pass" type="password" autocomplete="current-password" placeholder="Mínimo 6 caracteres">
         <div class="err" id="gg-err" hidden></div>
         <div class="ok" id="gg-ok" hidden></div>
-        <button class="btn btn-primary btn-block" id="gg-go" style="margin-top:14px">Enviarme el enlace de acceso</button>
+        <button class="btn btn-primary btn-block" id="gg-go" style="margin-top:14px">Entrar</button>
       </div>
-      <p class="gate-foot">Te llega un enlace por correo. Ábrelo en este mismo dispositivo y quedas dentro. Solo funcionan los correos que están en la lista de gestores.</p>
+      <p class="gate-foot">La primera vez, la contraseña que escribas queda como tu clave de acceso. Después entras directo, sin correos. Solo funcionan los correos que están en la lista de gestores.</p>
     </div>
   </div>
 </section>
@@ -468,17 +472,33 @@
   }
   function sgErr(m){ var e=$("#gate-suc-err"); e.textContent=m; e.hidden=false; }
 
-  $("#gg-email").addEventListener("input", function(){ $("#gg-err").hidden=true; $("#gg-ok").hidden=true; });
-  $("#gg-go").addEventListener("click", gestorLink);
-  function gestorLink(){
+  ["gg-email","gg-pass"].forEach(function(id){
+    $("#"+id).addEventListener("input", function(){ $("#gg-err").hidden=true; $("#gg-ok").hidden=true; });
+    $("#"+id).addEventListener("keydown", function(e){ if(e.key==="Enter"){ e.preventDefault(); gestorAuth(); } });
+  });
+  $("#gg-go").addEventListener("click", gestorAuth);
+  function ggBtnReset(){ var b=$("#gg-go"); b.disabled=false; b.textContent="Entrar"; }
+  function gestorAuth(){
     var email=$("#gg-email").value.trim().toLowerCase();
+    var pass=$("#gg-pass").value;
     if(!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)){ ggErr("Escribe un correo válido."); return; }
-    var btn=$("#gg-go"); btn.disabled=true; btn.innerHTML='<span class="spin"></span> Enviando…';
-    sb.auth.signInWithOtp({ email:email, options:{ emailRedirectTo: location.origin + location.pathname } }).then(function(res){
-      btn.disabled=false; btn.textContent="Enviarme el enlace de acceso";
-      if(res.error){ ggErr(res.error.message || "No se pudo enviar el enlace."); return; }
-      var o=$("#gg-ok"); o.textContent="Listo. Revisa "+email+" y abre el enlace en este dispositivo."; o.hidden=false;
-    });
+    if(pass.length<6){ ggErr("La contraseña debe tener al menos 6 caracteres."); return; }
+    var btn=$("#gg-go"); btn.disabled=true; btn.innerHTML='<span class="spin"></span> Entrando…';
+    sb.auth.signInWithPassword({ email:email, password:pass }).then(function(res){
+      if(!res.error){ return; /* onAuthStateChange se encarga */ }
+      // ¿primera vez? intentar crear el acceso con esa contraseña
+      sb.auth.signUp({ email:email, password:pass }).then(function(r2){
+        if(r2.error){
+          ggBtnReset();
+          if(/already/i.test(r2.error.message||"")) ggErr("Contraseña incorrecta.");
+          else ggErr(r2.error.message || "No se pudo entrar.");
+          return;
+        }
+        if(r2.data && r2.data.session){ return; /* onAuthStateChange se encarga */ }
+        ggBtnReset();
+        var o=$("#gg-ok"); o.textContent="Cuenta creada. Si te llega un correo de confirmación, ábrelo y vuelve a entrar."; o.hidden=false;
+      }).catch(function(){ ggBtnReset(); ggErr("No se pudo conectar."); });
+    }).catch(function(){ ggBtnReset(); ggErr("No se pudo conectar."); });
   }
   function ggErr(m){ var e=$("#gg-err"); e.textContent=m; e.hidden=false; }
 
@@ -1018,15 +1038,19 @@
       }
     });
   }
+  var checking=false;
   function checkGestor(email){
+    if(role==="gestor" || checking) return;
+    checking=true;
     sb.rpc("es_gestor").then(function(res){
+      checking=false;
       if(res.data===true){ startGestor(email); return; }
-      role=null; showView();
-      $("#gate-choices").hidden=true; $("#gate-gestor").hidden=false;
-      ggErr("El correo "+email+" no está autorizado como gestor. Pide que te agreguen a la lista.");
+      role=null; showView(); ggBtnReset();
+      $("#gate-choices").hidden=true; $("#gate-suc").hidden=true; $("#gate-gestor").hidden=false;
+      ggErr("El correo "+email+" no está en la lista de gestores. Pide que te agreguen.");
       sb.auth.signOut();
     }).catch(function(){
-      role=null; showView();
+      checking=false; role=null; showView(); ggBtnReset();
       toast("No se pudo verificar el acceso. Revisa tu conexión y recarga.");
     });
   }
