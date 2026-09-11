@@ -167,7 +167,7 @@
   .drawer-head{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:15px 18px;border-bottom:1px solid var(--line);flex:none}
   .drawer-head h2{font-size:17px}
   .drawer-body{overflow-y:auto;padding:18px;flex:1}
-  .drawer-foot{flex:none;border-top:1px solid var(--line);padding:13px 18px;display:flex;gap:10px;justify-content:flex-end;flex-wrap:wrap}
+  .drawer-foot{flex:none;border-top:1px solid var(--line);padding:13px 18px calc(13px + 56px);display:flex;gap:10px;justify-content:flex-end;flex-wrap:wrap}
   .icon-btn{border:none;background:transparent;color:var(--ink-soft);font-size:19px;line-height:1;cursor:pointer;padding:6px;border-radius:6px}
   .icon-btn:hover{background:var(--surface-2);color:var(--ink)}
 
@@ -354,7 +354,7 @@
      (Supabase → Settings → API)
   ================================================================ */
   var SUPABASE_URL      = "https://kbhkxbcmerurlxnlssso.supabase.co";
-  var SUPABASE_ANON_KEY = "sb_publishable_FSvjG2Fx-1RX9i2Z8yduDQ_fN9dcKrN";   // <<< pega tu clave  sb_publishable_...
+  var SUPABASE_ANON_KEY = "PEGA-AQUI-TU-PUBLISHABLE-KEY";   // <<< pega tu clave  sb_publishable_...
   /* ================================================================ */
 
   var sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
