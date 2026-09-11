@@ -354,7 +354,7 @@
      (Supabase → Settings → API)
   ================================================================ */
   var SUPABASE_URL      = "https://kbhkxbcmerurlxnlssso.supabase.co";
-  var SUPABASE_ANON_KEY = "sb_publishable_FSvjG2Fx-1RX9i2Z8yduDQ_fN9dcKrN";   // <<< pega tu clave  sb_publishable_...
+  var SUPABASE_ANON_KEY = "PEGA-AQUI-TU-PUBLISHABLE-KEY";   // <<< pega tu clave  sb_publishable_...
   /* ================================================================ */
 
   var sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
@@ -573,6 +573,13 @@
   function fieldWrap(id,label,control,hint){ return '<div class="field" data-for="'+id+'"><label for="'+id+'">'+label+'</label>'+control+(hint?'<div class="hint">'+hint+'</div>':'')+'</div>'; }
   function markInvalid(id,msg){ var f=document.querySelector('.field[data-for="'+id+'"]'); if(!f) return; f.classList.add("invalid"); var e=f.querySelector(".err"); if(!e){ e=document.createElement("div"); e.className="err"; f.appendChild(e); } e.textContent=msg; }
   function clearInvalid(){ Array.prototype.forEach.call(document.querySelectorAll(".field.invalid"), function(f){ f.classList.remove("invalid"); var e=f.querySelector(".err"); if(e) e.textContent=""; }); }
+  function focusFirstInvalid(){
+    var f=document.querySelector(".field.invalid");
+    if(!f) return;
+    if(f.scrollIntoView) f.scrollIntoView({ behavior:"smooth", block:"center" });
+    var el=f.querySelector("input,select,textarea");
+    if(el && el.focus) setTimeout(function(){ el.focus(); }, 300);
+  }
 
   /* ---------- Formulario ---------- */
   function openForm(){
@@ -654,7 +661,7 @@
     if(!inst){ markInvalid("f_inst","Elige la institución."); bad=true; }
     if(!$("#f_recep").value){ markInvalid("f_recep","Falta la fecha de recepción."); bad=true; }
     if(formPhotos.some(function(p){ return p.loading; })){ toast("Espera a que terminen de procesarse las fotos."); bad=true; }
-    if(bad) return;
+    if(bad){ toast("Falta completar algo del formulario (revisa en rojo)."); focusFirstInvalid(); return; }
     var noFotos = !formPhotos.some(function(p){ return p.blob; });
     (noFotos ? confirmBox("No adjuntaste ninguna foto. ¿Guardar de todos modos?", { yes:"Guardar" }) : Promise.resolve(true)).then(function(ok){
       if(!ok) return;
